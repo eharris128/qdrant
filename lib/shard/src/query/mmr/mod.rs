@@ -106,6 +106,19 @@ fn create_volatile_storage(
     multivector_config: Option<MultiVectorConfig>,
     hw_counter: HardwareCounterCell,
 ) -> OperationResult<VectorStorageEnum> {
+    // Quantized candidates (e.g. TurboQuant) have no borrowed float view; decode
+    // them so they can populate a plain volatile storage and be scored.
+    let vectors: Vec<VectorInternal> = vectors
+        .iter()
+        .map(|vector| match vector {
+            VectorInternal::Quantized(quantized) => quantized.dequantize(),
+            other @ (VectorInternal::Dense(_)
+            | VectorInternal::Sparse(_)
+            | VectorInternal::MultiDense(_)) => other.clone(),
+        })
+        .collect();
+    let vectors = vectors.as_slice();
+
     // Create temporary vector storage
     let mut volatile_storage = {
         match &vectors[0] {
@@ -128,6 +141,9 @@ fn create_volatile_storage(
             }
 
             VectorInternal::Sparse(_) => new_volatile_sparse_vector_storage(),
+
+            // Decoded into `Dense` above, so this is unreachable here.
+            VectorInternal::Quantized(_) => unreachable!("quantized vectors are decoded above"),
         }
     };
 

@@ -153,6 +153,8 @@ impl Generalizer for VectorInternal {
                     2,
                 ))
             }
+            // Strip the bytes; keep just the dimensionality marker.
+            VectorInternal::Quantized(q) => VectorInternal::Dense(vec![q.dim as f32]),
         }
     }
 }
